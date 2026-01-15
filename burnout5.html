@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Burnout Balance V2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            background: #1a1d28;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        /* ============================================ */
+        /* MAIN SCREEN UI */
+        /* ============================================ */
+        .ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 0 0 20px 20px;
+            padding: max(env(safe-area-inset-top, 12px), 12px) 20px 12px 20px;
+            margin: 0 12px 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left {
+            flex: 1;
+        }
+        
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .header-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.2s;
+            min-height: 36px;
+        }
+        
+        .header-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 0;
+        }
+        
+        .burnout-display {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin: 0 12px 8px 12px;
+            text-align: center;
+        }
+        
+        .burnout-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        
+        .burnout-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        
+        .burnout-state {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 12px max(env(safe-area-inset-bottom, 12px), 12px) 12px;
+        }
+        
+        .control-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 14px;
+            padding: 12px;
+        }
+        
+        .section-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            min-height: 44px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-load {
+            background: rgba(255, 120, 120, 0.2);
+        }
+        
+        .btn-load:active {
+            background: rgba(255, 120, 120, 0.35);
+        }
+        
+        .btn-load.held {
+            background: rgba(255, 120, 120, 0.4);
+            animation: pulse 0.5s infinite;
+        }
+        
+        .btn-recovery {
+            background: rgba(120, 200, 255, 0.2);
+        }
+        
+        .btn-recovery:active {
+            background: rgba(120, 200, 255, 0.35);
+        }
+        
+        .btn-recovery.held {
+            background: rgba(120, 200, 255, 0.4);
+            animation: pulse 0.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* ============================================ */
+        /* RESULTS SCREEN */
+        /* ============================================ */
+        .results-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1d28;
+            display: none;
+            flex-direction: column;
+            z-index: 300;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .results-overlay.active {
+            display: flex;
+        }
+        
+        .results-header {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: max(env(safe-area-inset-top, 12px), 12px) 20px 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        .results-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+        
+        .back-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 36px;
+        }
+        
+        .back-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.25);
+        }
+        
+        .results-content {
+            flex: 1;
+            padding: 16px 12px max(env(safe-area-inset-bottom, 12px), 12px) 12px;
+        }
+        
+        .summary-card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .summary-title {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .summary-item {
+            text-align: center;
+        }
+        
+        .summary-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        
+        .summary-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.3;
+        }
+        
+        .insight-card {
+            background: rgba(120, 200, 255, 0.15);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .insight-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .insight-text:last-child {
+            margin-bottom: 0;
+        }
+        
+        .chart-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .toggle-btn.active {
+            background: rgba(120, 200, 255, 0.25);
+            color: #fff;
+        }
+        
+        .toggle-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        
+        .chart-title {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 600;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        
+        .export-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .export-btn:active {
+            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        
+        .toast.show {
+            opacity: 1;
+        }
+        
+        /* Media query for larger screens */
+        @media (min-height: 700px) {
+            .header {
+                padding: max(env(safe-area-inset-top, 16px), 16px) 24px 16px 24px;
+                margin: 0 16px 12px 16px;
+            }
+            
+            .title {
+                font-size: 24px;
+            }
+            
+            .burnout-display {
+                padding: 20px 24px;
+                margin: 0 16px 12px 16px;
+            }
+            
+            .burnout-value {
+                font-size: 42px;
+            }
+            
+            .controls {
+                gap: 10px;
+                padding: 0 16px max(env(safe-area-inset-bottom, 16px), 16px) 16px;
+            }
+            
+            .control-section {
+                padding: 14px;
+            }
+            
+            .button-row {
+                gap: 8px;
+            }
+            
+            .btn {
+                padding: 14px 12px;
+                font-size: 14px;
+            }
+        }
+        
+        .intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 40px;
+        }
+        
+        .intro-overlay.hidden {
+            display: none;
+        }
+        
+        .intro-content {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .intro-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+        
+        .intro-text {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .intro-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .intro-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+    
+    <!-- Intro overlay -->
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-content">
+            <div class="intro-title">⚖️ Burnout Balance V2</div>
+            <div class="intro-text">
+                Track how imbalance emerges between life's loads and your capacity to recover.<br><br>
+                <strong>Tap or hold</strong> stressors to add load.<br>
+                <strong>Tap or hold</strong> recovery actions to restore balance.<br><br>
+                Check <strong>Results</strong> to see your patterns.
+            </div>
+            <button class="intro-btn" id="startBtn">Begin</button>
+        </div>
+    </div>
+    
+    <!-- Main UI -->
+    <div class="ui-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="title">Burnout Balance</div>
+            </div>
+            <div class="header-buttons">
+                <button class="header-btn" id="resultsBtn">Results</button>
+                <button class="header-btn" id="resetBtn">Reset</button>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="burnout-display">
+                <div class="burnout-label">BURNOUT LEVEL</div>
+                <div class="burnout-value" id="burnoutValue">30%</div>
+                <div class="burnout-state" id="burnoutState">Balanced</div>
+            </div>
+            
+            <div class="controls">
+                <div class="control-section">
+                    <div class="section-label">⚠️ STRESSORS</div>
+                    <div class="button-row">
+                        <button class="btn btn-load" id="btnWork">Work</button>
+                        <button class="btn btn-load" id="btnObligations">Obligations</button>
+                        <button class="btn btn-load" id="btnSocial">Social</button>
+                        <button class="btn btn-load" id="btnMaintenance">Maintenance</button>
+                    </div>
+                </div>
+                
+                <div class="control-section">
+                    <div class="section-label">💚 BALANCERS</div>
+                    <div class="button-row">
+                        <button class="btn btn-recovery" id="btnBreathing">Breathing</button>
+                        <button class="btn btn-recovery" id="btnMovement">Movement</button>
+                        <button class="btn btn-recovery" id="btnSupport">Support</button>
+                        <button class="btn btn-recovery" id="btnRest">Rest</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Screen -->
+    <div class="results-overlay" id="resultsOverlay">
+        <div class="results-header">
+            <div class="results-title">📊 Results</div>
+            <button class="back-btn" id="backBtn">Back</button>
+        </div>
+        
+        <div class="results-content">
+            <!-- Summary -->
+            <div class="summary-card">
+                <div class="summary-title">Session Summary</div>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalStressTaps">0</div>
+                        <div class="summary-label">Stressor<br>Taps</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalStressHold">0s</div>
+                        <div class="summary-label">Stressor<br>Hold Time</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalBalanceTaps">0</div>
+                        <div class="summary-label">Balancer<br>Taps</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-value" id="totalBalanceHold">0s</div>
+                        <div class="summary-label">Balancer<br>Hold Time</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Insights -->
+            <div class="insight-card" id="insightCard">
+                <div class="insight-text" id="insightTop">💡 Analyzing patterns...</div>
+                <div class="insight-text" id="insightBalance">⚖️ Checking balance...</div>
+            </div>
+            
+            <!-- Chart Toggle -->
+            <div class="chart-toggle">
+                <button class="toggle-btn active" id="toggleTaps">Tap Counts</button>
+                <button class="toggle-btn" id="toggleHold">Hold Time</button>
+            </div>
+            
+            <!-- Charts -->
+            <div class="chart-container" id="tapsChartContainer">
+                <div class="chart-title">Tap Counts by Category</div>
+                <canvas id="tapsChart"></canvas>
+            </div>
+            
+            <div class="chart-container" id="holdChartContainer" style="display: none;">
+                <div class="chart-title">Hold Time by Category (seconds)</div>
+                <canvas id="holdChart"></canvas>
+            </div>
+            
+            <!-- Export -->
+            <button class="export-btn" id="exportBtn">📋 Export Data (Copy JSON)</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // DATA MODEL
+        // ============================================
+        const CATEGORIES = {
+            stressors: ['work', 'obligations', 'social', 'maintenance'],
+            balancers: ['breathing', 'movement', 'support', 'rest']
+        };
+        
+        const CATEGORY_LABELS = {
+            work: 'Work',
+            obligations: 'Obligations',
+            social: 'Social',
+            maintenance: 'Maintenance',
+            breathing: 'Breathing',
+            movement: 'Movement',
+            support: 'Support',
+            rest: 'Rest'
+        };
+        
+        let sessionData = {
+            work: { tapCount: 0, holdSeconds: 0 },
+            obligations: { tapCount: 0, holdSeconds: 0 },
+            social: { tapCount: 0, holdSeconds: 0 },
+            maintenance: { tapCount: 0, holdSeconds: 0 },
+            breathing: { tapCount: 0, holdSeconds: 0 },
+            movement: { tapCount: 0, holdSeconds: 0 },
+            support: { tapCount: 0, holdSeconds: 0 },
+            rest: { tapCount: 0, holdSeconds: 0 },
+            sessionStart: Date.now(),
+            lastUpdated: Date.now()
+        };
+        
+        // Active hold tracking
+        let activeHold = {
+            category: null,
+            startTime: null
+        };
+        
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const CONFIG = {
+            initialBurnout: 30,
+            initialLoadWeight: 55,
+            initialRecoveryWeight: 45,
+            tapLoadIncrease: 8,
+            holdLoadIncrease: 0.4,
+            tapRecoveryIncrease: 10,
+            holdRecoveryIncrease: 0.5,
+            loadDecay: 0.08,
+            recoveryDecay: 0.08,
+            imbalanceThreshold: 15,
+            burnoutIncreaseRate: 0.05,
+            burnoutDecreaseRate: 0.03,
+            recoveryBurnoutDecreaseRate: 0.08,
+            balancedThreshold: 50,
+            strainedThreshold: 75,
+            overloadedThreshold: 90,
+        };
+
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+        let burnout = CONFIG.initialBurnout;
+        let loadWeight = CONFIG.initialLoadWeight;
+        let recoveryWeight = CONFIG.initialRecoveryWeight;
+        let heldButtons = new Set();
+        let hasSeenIntro = false;
+        let seesawAngle = 0;
+        let targetSeesawAngle = 0;
+        let breathOffset = 0;
+        let currentState = 'balanced';
+        
+        // Chart canvases
+        let tapsChartCanvas;
+        let holdChartCanvas;
+        
+        // ============================================
+        // PERSISTENCE
+        // ============================================
+        function saveData() {
+            sessionData.lastUpdated = Date.now();
+            localStorage.setItem('burnoutBalanceData', JSON.stringify(sessionData));
+        }
+        
+        function loadData() {
+            const saved = localStorage.getItem('burnoutBalanceData');
+            if (saved) {
+                try {
+                    sessionData = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Failed to load data:', e);
+                }
+            }
+        }
+        
+        function clearData() {
+            sessionData = {
+                work: { tapCount: 0, holdSeconds: 0 },
+                obligations: { tapCount: 0, holdSeconds: 0 },
+                social: { tapCount: 0, holdSeconds: 0 },
+                maintenance: { tapCount: 0, holdSeconds: 0 },
+                breathing: { tapCount: 0, holdSeconds: 0 },
+                movement: { tapCount: 0, holdSeconds: 0 },
+                support: { tapCount: 0, holdSeconds: 0 },
+                rest: { tapCount: 0, holdSeconds: 0 },
+                sessionStart: Date.now(),
+                lastUpdated: Date.now()
+            };
+            localStorage.removeItem('burnoutBalanceData');
+            saveData();
+        }
+        
+        // ============================================
+        // P5.JS SETUP
+        // ============================================
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            pixelDensity(2);
+            
+            // Load saved data
+            loadData();
+            
+            // Setup buttons
+            setupButton('btnWork', 'work', true);
+            setupButton('btnObligations', 'obligations', true);
+            setupButton('btnSocial', 'social', true);
+            setupButton('btnMaintenance', 'maintenance', true);
+            setupButton('btnBreathing', 'breathing', false);
+            setupButton('btnMovement', 'movement', false);
+            setupButton('btnSupport', 'support', false);
+            setupButton('btnRest', 'rest', false);
+            
+            // Setup UI controls
+            document.getElementById('resetBtn').addEventListener('click', resetSystem);
+            document.getElementById('resultsBtn').addEventListener('click', showResults);
+            document.getElementById('backBtn').addEventListener('click', hideResults);
+            document.getElementById('startBtn').addEventListener('click', dismissIntro);
+            document.getElementById('exportBtn').addEventListener('click', exportData);
+            
+            // Chart toggle
+            document.getElementById('toggleTaps').addEventListener('click', () => showChart('taps'));
+            document.getElementById('toggleHold').addEventListener('click', () => showChart('hold'));
+            
+            // Create chart canvases
+            createChartCanvases();
+        }
+
+        function draw() {
+            if (!hasSeenIntro) {
+                background(26, 29, 40);
+                return;
+            }
+            
+            updateWeights();
+            updateBalance();
+            updateBurnout();
+            updateVisualState();
+            
+            drawBackground();
+            drawSeesaw();
+            
+            updateUI();
+        }
+
+        // ============================================
+        // BUTTON SETUP
+        // ============================================
+        function setupButton(id, category, isStressor) {
+            const btn = document.getElementById(id);
+            
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleButtonPress(category, btn, isStressor);
+            });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                handleButtonRelease(category, btn);
+            });
+            
+            btn.addEventListener('mousedown', () => handleButtonPress(category, btn, isStressor));
+            btn.addEventListener('mouseup', () => handleButtonRelease(category, btn));
+            btn.addEventListener('mouseleave', () => handleButtonRelease(category, btn));
+        }
+
+        function handleButtonPress(category, btn, isStressor) {
+            heldButtons.add(category);
+            btn.classList.add('held');
+            
+            // Record tap
+            sessionData[category].tapCount++;
+            
+            // Start hold timer
+            activeHold.category = category;
+            activeHold.startTime = millis();
+            
+            // Immediate effect on weights
+            if (isStressor) {
+                loadWeight += CONFIG.tapLoadIncrease;
+            } else {
+                recoveryWeight += CONFIG.tapRecoveryIncrease;
+            }
+            
+            saveData();
+        }
+
+        function handleButtonRelease(category, btn) {
+            heldButtons.delete(category);
+            btn.classList.remove('held');
+            
+            // Calculate and record hold time
+            if (activeHold.category === category && activeHold.startTime !== null) {
+                const holdDuration = (millis() - activeHold.startTime) / 1000;
+                sessionData[category].holdSeconds += holdDuration;
+                
+                activeHold.category = null;
+                activeHold.startTime = null;
+                
+                saveData();
+            }
+        }
+
+        // ============================================
+        // SYSTEM UPDATES
+        // ============================================
+        function updateWeights() {
+            for (let category of heldButtons) {
+                if (CATEGORIES.stressors.includes(category)) {
+                    loadWeight += CONFIG.holdLoadIncrease;
+                } else {
+                    recoveryWeight += CONFIG.holdRecoveryIncrease;
+                }
+            }
+            
+            if (loadWeight > 50) {
+                loadWeight -= CONFIG.loadDecay;
+            } else if (loadWeight < 50) {
+                loadWeight += CONFIG.loadDecay * 0.5;
+            }
+            
+            if (recoveryWeight > 50) {
+                recoveryWeight -= CONFIG.recoveryDecay;
+            } else if (recoveryWeight < 50) {
+                recoveryWeight += CONFIG.recoveryDecay * 0.5;
+            }
+            
+            loadWeight = constrain(loadWeight, 0, 100);
+            recoveryWeight = constrain(recoveryWeight, 0, 100);
+        }
+
+        function updateBalance() {
+            let imbalance = loadWeight - recoveryWeight;
+            targetSeesawAngle = map(imbalance, -100, 100, -1, 1);
+            seesawAngle = lerp(seesawAngle, targetSeesawAngle, 0.05);
+        }
+
+        function updateBurnout() {
+            let imbalance = loadWeight - recoveryWeight;
+            let absImbalance = abs(imbalance);
+            
+            if (absImbalance > CONFIG.imbalanceThreshold) {
+                if (imbalance > 0) {
+                    let intensity = map(absImbalance, CONFIG.imbalanceThreshold, 100, 1, 3);
+                    burnout += CONFIG.burnoutIncreaseRate * intensity;
+                } else {
+                    let intensity = map(absImbalance, CONFIG.imbalanceThreshold, 100, 1, 2.5);
+                    burnout -= CONFIG.recoveryBurnoutDecreaseRate * intensity;
+                }
+            } else {
+                burnout -= CONFIG.burnoutDecreaseRate;
+            }
+            
+            burnout = constrain(burnout, 0, 100);
+        }
+
+        function updateVisualState() {
+            if (burnout >= CONFIG.overloadedThreshold) {
+                currentState = 'overloaded';
+            } else if (burnout >= CONFIG.strainedThreshold) {
+                currentState = 'strained';
+            } else {
+                currentState = 'balanced';
+            }
+        }
+
+        // ============================================
+        // DRAWING
+        // ============================================
+        function drawBackground() {
+            let c1, c2;
+            
+            if (currentState === 'balanced') {
+                c1 = color(26, 29, 40);
+                c2 = color(40, 55, 80);
+            } else if (currentState === 'strained') {
+                c1 = color(35, 30, 40);
+                c2 = color(70, 50, 60);
+            } else {
+                c1 = color(40, 25, 30);
+                c2 = color(80, 40, 45);
+            }
+            
+            for (let y = 0; y < height; y++) {
+                let inter = map(y, 0, height, 0, 1);
+                let c = lerpColor(c1, c2, inter);
+                stroke(c);
+                line(0, y, width, y);
+            }
+        }
+
+        function drawSeesaw() {
+            push();
+            
+            let uiHeight = 450;
+            let availableHeight = height - uiHeight;
+            let centerY = 120 + (availableHeight / 2);
+            centerY = constrain(centerY, height * 0.25, height * 0.45);
+            
+            let centerX = width / 2;
+            
+            translate(centerX, centerY);
+            
+            breathOffset += 0.015;
+            let breathScale = 1 + sin(breathOffset) * 0.01;
+            scale(breathScale);
+            
+            if (currentState === 'strained') {
+                translate(sin(frameCount * 0.05) * 2, cos(frameCount * 0.05) * 2);
+            } else if (currentState === 'overloaded') {
+                translate(sin(frameCount * 0.1) * 4, cos(frameCount * 0.08) * 4);
+            }
+            
+            let seesawLength = min(width * 0.75, 500);
+            let seesawThickness = 14;
+            
+            rotate(seesawAngle * 0.35);
+            
+            fill(255, 255, 255, 100);
+            noStroke();
+            triangle(-20, 0, 20, 0, 0, 28);
+            
+            let barColor;
+            if (currentState === 'balanced') {
+                barColor = color(120, 200, 255);
+            } else if (currentState === 'strained') {
+                barColor = color(255, 180, 100);
+            } else {
+                barColor = color(255, 120, 120);
+            }
+            
+            drawingContext.shadowBlur = 20;
+            drawingContext.shadowColor = `rgba(${red(barColor)}, ${green(barColor)}, ${blue(barColor)}, 0.6)`;
+            
+            fill(barColor);
+            noStroke();
+            rectMode(CENTER);
+            rect(0, -12, seesawLength, seesawThickness, 7);
+            
+            drawingContext.shadowBlur = 0;
+            
+            let leftX = -seesawLength / 2 + 50;
+            let rightX = seesawLength / 2 - 50;
+            let weightY = -12;
+            
+            fill(120, 200, 255, 200);
+            stroke(255, 255, 255, 100);
+            strokeWeight(2);
+            let recoverySize = map(recoveryWeight, 0, 100, 30, 80);
+            circle(leftX, weightY, recoverySize);
+            
+            fill(255, 120, 120, 200);
+            stroke(255, 255, 255, 100);
+            strokeWeight(2);
+            let loadSize = map(loadWeight, 0, 100, 30, 80);
+            circle(rightX, weightY, loadSize);
+            
+            noStroke();
+            fill(255, 255, 255, 220);
+            textAlign(CENTER, CENTER);
+            textSize(15);
+            textStyle(BOLD);
+            text('Recovery', leftX, weightY + recoverySize/2 + 24);
+            text('Load', rightX, weightY + loadSize/2 + 24);
+            
+            pop();
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateUI() {
+            document.getElementById('burnoutValue').textContent = Math.round(burnout) + '%';
+            
+            let stateText;
+            if (currentState === 'balanced') {
+                stateText = '✓ Balanced';
+            } else if (currentState === 'strained') {
+                stateText = '⚠️ Strained';
+            } else {
+                stateText = '🔥 Overloaded';
+            }
+            document.getElementById('burnoutState').textContent = stateText;
+        }
+
+        // ============================================
+        // RESULTS SCREEN
+        // ============================================
+        function showResults() {
+            document.getElementById('resultsOverlay').classList.add('active');
+            updateResultsData();
+            drawCharts();
+        }
+
+        function hideResults() {
+            document.getElementById('resultsOverlay').classList.remove('active');
+        }
+
+        function updateResultsData() {
+            // Calculate totals
+            let totalStressTaps = 0;
+            let totalStressHold = 0;
+            let totalBalanceTaps = 0;
+            let totalBalanceHold = 0;
+            
+            CATEGORIES.stressors.forEach(cat => {
+                totalStressTaps += sessionData[cat].tapCount;
+                totalStressHold += sessionData[cat].holdSeconds;
+            });
+            
+            CATEGORIES.balancers.forEach(cat => {
+                totalBalanceTaps += sessionData[cat].tapCount;
+                totalBalanceHold += sessionData[cat].holdSeconds;
+            });
+            
+            // Update summary
+            document.getElementById('totalStressTaps').textContent = totalStressTaps;
+            document.getElementById('totalStressHold').textContent = Math.round(totalStressHold) + 's';
+            document.getElementById('totalBalanceTaps').textContent = totalBalanceTaps;
+            document.getElementById('totalBalanceHold').textContent = Math.round(totalBalanceHold) + 's';
+            
+            // Generate insights
+            generateInsights();
+        }
+
+        function generateInsights() {
+            // Find top stressor and balancer
+            let topStressor = null;
+            let topStressorValue = 0;
+            let topBalancer = null;
+            let topBalancerValue = 0;
+            
+            CATEGORIES.stressors.forEach(cat => {
+                const value = sessionData[cat].tapCount + sessionData[cat].holdSeconds;
+                if (value > topStressorValue) {
+                    topStressorValue = value;
+                    topStressor = cat;
+                }
+            });
+            
+            CATEGORIES.balancers.forEach(cat => {
+                const value = sessionData[cat].tapCount + sessionData[cat].holdSeconds;
+                if (value > topBalancerValue) {
+                    topBalancerValue = value;
+                    topBalancer = cat;
+                }
+            });
+            
+            const insightTop = document.getElementById('insightTop');
+            const insightBalance = document.getElementById('insightBalance');
+            
+            if (topStressor && topStressorValue > 0) {
+                insightTop.textContent = `💡 Top stressor: ${CATEGORY_LABELS[topStressor]}`;
+            } else {
+                insightTop.textContent = '💡 No stressors recorded yet';
+            }
+            
+            if (topBalancer && topBalancerValue > 0) {
+                insightBalance.textContent = `⚖️ Top balancer: ${CATEGORY_LABELS[topBalancer]}`;
+            } else {
+                insightBalance.textContent = '⚖️ No balancers recorded yet';
+            }
+        }
+
+        // ============================================
+        // CHARTS
+        // ============================================
+        function createChartCanvases() {
+            // Create canvases for charts
+            tapsChartCanvas = document.getElementById('tapsChart');
+            holdChartCanvas = document.getElementById('holdChart');
+            
+            // Size them appropriately
+            resizeChartCanvases();
+        }
+
+        function resizeChartCanvases() {
+            const container = document.querySelector('.chart-container');
+            if (!container) return;
+            
+            const width = container.clientWidth - 40;
+            const height = 400;
+            
+            if (tapsChartCanvas) {
+                tapsChartCanvas.width = width;
+                tapsChartCanvas.height = height;
+            }
+            if (holdChartCanvas) {
+                holdChartCanvas.width = width;
+                holdChartCanvas.height = height;
+            }
+        }
+
+        function showChart(type) {
+            document.getElementById('toggleTaps').classList.toggle('active', type === 'taps');
+            document.getElementById('toggleHold').classList.toggle('active', type === 'hold');
+            
+            document.getElementById('tapsChartContainer').style.display = type === 'taps' ? 'block' : 'none';
+            document.getElementById('holdChartContainer').style.display = type === 'hold' ? 'block' : 'none';
+        }
+
+        function drawCharts() {
+            resizeChartCanvases();
+            drawTapsChart();
+            drawHoldChart();
+        }
+
+        function drawTapsChart() {
+            const canvas = tapsChartCanvas;
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Collect data
+            const allCategories = [...CATEGORIES.stressors, ...CATEGORIES.balancers];
+            const data = allCategories.map(cat => ({
+                label: CATEGORY_LABELS[cat],
+                value: sessionData[cat].tapCount,
+                isStressor: CATEGORIES.stressors.includes(cat)
+            }));
+            
+            drawBarChart(ctx, width, height, data, 'taps');
+        }
+
+        function drawHoldChart() {
+            const canvas = holdChartCanvas;
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            // Collect data
+            const allCategories = [...CATEGORIES.stressors, ...CATEGORIES.balancers];
+            const data = allCategories.map(cat => ({
+                label: CATEGORY_LABELS[cat],
+                value: sessionData[cat].holdSeconds,
+                isStressor: CATEGORIES.stressors.includes(cat)
+            }));
+            
+            drawBarChart(ctx, width, height, data, 'hold');
+        }
+
+        function drawBarChart(ctx, width, height, data, type) {
+            const padding = 40;
+            const barSpacing = 12;
+            const chartWidth = width - padding * 2;
+            const chartHeight = height - padding * 2;
+            
+            const maxValue = Math.max(...data.map(d => d.value), 1);
+            const barWidth = (chartWidth - barSpacing * (data.length - 1)) / data.length;
+            
+            // Draw bars
+            data.forEach((item, i) => {
+                const barHeight = (item.value / maxValue) * chartHeight;
+                const x = padding + i * (barWidth + barSpacing);
+                const y = height - padding - barHeight;
+                
+                // Bar color
+                ctx.fillStyle = item.isStressor ? 'rgba(255, 120, 120, 0.8)' : 'rgba(120, 200, 255, 0.8)';
+                ctx.fillRect(x, y, barWidth, barHeight);
+                
+                // Value on top
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px system-ui';
+                ctx.textAlign = 'center';
+                const valueText = type === 'hold' ? Math.round(item.value) + 's' : item.value;
+                ctx.fillText(valueText, x + barWidth / 2, y - 8);
+                
+                // Label at bottom
+                ctx.save();
+                ctx.translate(x + barWidth / 2, height - padding + 12);
+                ctx.rotate(-Math.PI / 4);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '12px system-ui';
+                ctx.textAlign = 'right';
+                ctx.fillText(item.label, 0, 0);
+                ctx.restore();
+            });
+            
+            // Baseline
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, height - padding);
+            ctx.lineTo(width - padding, height - padding);
+            ctx.stroke();
+        }
+
+        // ============================================
+        // EXPORT
+        // ============================================
+        function exportData() {
+            const exportObj = {
+                ...sessionData,
+                currentBurnout: Math.round(burnout),
+                exportedAt: new Date().toISOString()
+            };
+            
+            const jsonStr = JSON.stringify(exportObj, null, 2);
+            
+            // Copy to clipboard
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(jsonStr).then(() => {
+                    showToast('Data copied to clipboard!');
+                }).catch(() => {
+                    showToast('Failed to copy');
+                });
+            } else {
+                showToast('Clipboard not supported');
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // ============================================
+        // CONTROLS
+        // ============================================
+        function resetSystem() {
+            if (confirm('Reset all data? This cannot be undone.')) {
+                burnout = CONFIG.initialBurnout;
+                loadWeight = CONFIG.initialLoadWeight;
+                recoveryWeight = CONFIG.initialRecoveryWeight;
+                heldButtons.clear();
+                clearData();
+                
+                document.querySelectorAll('.btn').forEach(btn => {
+                    btn.classList.remove('held');
+                });
+                
+                showToast('System reset');
+            }
+        }
+
+        function dismissIntro() {
+            document.getElementById('introOverlay').classList.add('hidden');
+            hasSeenIntro = true;
+        }
+
+        // ============================================
+        // RESPONSIVE
+        // ============================================
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+            resizeChartCanvases();
+            if (document.getElementById('resultsOverlay').classList.contains('active')) {
+                drawCharts();
+            }
+        }
+    </script>
+</body>
+</html>
