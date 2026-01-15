@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Burnout Balance</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            background: #1a1d28;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .ui-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        /* Header - Compact at top */
+        .header {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 0 0 20px 20px;
+            padding: max(env(safe-area-inset-top, 12px), 12px) 20px 12px 20px;
+            margin: 0 12px 8px 12px;
+        }
+        
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+            letter-spacing: -0.5px;
+        }
+        
+        .subtitle {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+        }
+        
+        /* Main content area - this pushes controls to bottom */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            min-height: 0; /* Important for flex */
+        }
+        
+        /* Burnout display - Compact and positioned above controls */
+        .burnout-display {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin: 0 12px 8px 12px;
+            text-align: center;
+        }
+        
+        .burnout-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+        
+        .burnout-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+        
+        .burnout-state {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+        
+        /* Controls - Fixed at bottom */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 12px max(env(safe-area-inset-bottom, 12px), 12px) 12px;
+        }
+        
+        .control-section {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 14px;
+            padding: 12px;
+        }
+        
+        .section-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            min-height: 44px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn:active {
+            transform: scale(0.95);
+        }
+        
+        .btn-load {
+            background: rgba(255, 120, 120, 0.2);
+        }
+        
+        .btn-load:active {
+            background: rgba(255, 120, 120, 0.35);
+        }
+        
+        .btn-load.held {
+            background: rgba(255, 120, 120, 0.4);
+            animation: pulse 0.5s infinite;
+        }
+        
+        .btn-recovery {
+            background: rgba(120, 200, 255, 0.2);
+        }
+        
+        .btn-recovery:active {
+            background: rgba(120, 200, 255, 0.35);
+        }
+        
+        .btn-recovery.held {
+            background: rgba(120, 200, 255, 0.4);
+            animation: pulse 0.5s infinite;
+        }
+        
+        .btn-reset {
+            background: rgba(255, 255, 255, 0.15);
+            grid-column: span 2;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Media query for larger screens - give more breathing room */
+        @media (min-height: 700px) {
+            .header {
+                padding: max(env(safe-area-inset-top, 16px), 16px) 24px 16px 24px;
+                margin: 0 16px 12px 16px;
+            }
+            
+            .title {
+                font-size: 24px;
+                margin-bottom: 6px;
+            }
+            
+            .subtitle {
+                font-size: 13px;
+            }
+            
+            .burnout-display {
+                padding: 20px 24px;
+                margin: 0 16px 12px 16px;
+            }
+            
+            .burnout-value {
+                font-size: 42px;
+            }
+            
+            .controls {
+                gap: 10px;
+                padding: 0 16px max(env(safe-area-inset-bottom, 16px), 16px) 16px;
+            }
+            
+            .control-section {
+                padding: 14px;
+            }
+            
+            .button-row {
+                gap: 8px;
+            }
+            
+            .btn {
+                padding: 14px 12px;
+                font-size: 14px;
+            }
+        }
+        
+        .intro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 40px;
+        }
+        
+        .intro-overlay.hidden {
+            display: none;
+        }
+        
+        .intro-content {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .intro-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+        
+        .intro-text {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .intro-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+        
+        .intro-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .reflection-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            padding: 40px;
+        }
+        
+        .reflection-overlay.active {
+            display: flex;
+        }
+        
+        .reflection-content {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .reflection-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+        
+        .reflection-text {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+        
+        .reflection-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 12px;
+            padding: 14px 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.2s;
+        }
+        
+        .reflection-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Intro overlay -->
+    <div class="intro-overlay" id="introOverlay">
+        <div class="intro-content">
+            <div class="intro-title">⚖️ Burnout Balance</div>
+            <div class="intro-text">
+                Burnout isn't caused by one thing.<br>
+                It emerges from sustained imbalance between life's loads and your capacity to recover.<br><br>
+                <strong>Tap stressors</strong> to add load.<br>
+                <strong>Hold them</strong> to simulate prolonged stress.<br>
+                <strong>Use recovery</strong> to restore balance.
+            </div>
+            <button class="intro-btn" id="startBtn">Begin</button>
+        </div>
+    </div>
+    
+    <!-- Reflection overlay -->
+    <div class="reflection-overlay" id="reflectionOverlay">
+        <div class="reflection-content">
+            <div class="reflection-title">⚠️ System Overloaded</div>
+            <div class="reflection-text" id="reflectionText">
+                Your system is deeply out of balance. Real recovery takes time and intentional action.<br><br>
+                Consider: what would restore balance in your actual life?
+            </div>
+            <button class="reflection-btn" id="acknowledgeBtn">Acknowledge</button>
+        </div>
+    </div>
+    
+    <!-- Main UI -->
+    <div class="ui-container">
+        <!-- Compact header at top -->
+        <div class="header">
+            <div class="title">Burnout Balance</div>
+            <div class="subtitle">Burnout isn't caused by one thing. It's caused by imbalance.</div>
+        </div>
+        
+        <!-- Main content area - seesaw lives here in the canvas -->
+        <div class="main-content">
+            <!-- Burnout display above controls -->
+            <div class="burnout-display">
+                <div class="burnout-label">BURNOUT LEVEL</div>
+                <div class="burnout-value" id="burnoutValue">30%</div>
+                <div class="burnout-state" id="burnoutState">Balanced</div>
+            </div>
+            
+            <!-- Controls at bottom -->
+            <div class="controls">
+                <!-- Load section -->
+                <div class="control-section">
+                    <div class="section-label">⚠️ STRESSORS (ADD LOAD)</div>
+                    <div class="button-row">
+                        <button class="btn btn-load" id="btnWork">Work</button>
+                        <button class="btn btn-load" id="btnObligations">Obligations</button>
+                        <button class="btn btn-load" id="btnSocial">Social</button>
+                        <button class="btn btn-load" id="btnMaintenance">Maintenance</button>
+                    </div>
+                </div>
+                
+                <!-- Recovery section -->
+                <div class="control-section">
+                    <div class="section-label">💚 RECOVERY (RESTORE BALANCE)</div>
+                    <div class="button-row">
+                        <button class="btn btn-recovery" id="btnBreathing">Breathing</button>
+                        <button class="btn btn-recovery" id="btnMovement">Movement</button>
+                        <button class="btn btn-recovery" id="btnSupport">Support</button>
+                        <button class="btn btn-reset" id="btnReset">Reset</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const CONFIG = {
+            // Starting values
+            initialBurnout: 30,
+            initialLoadWeight: 55,      // Slightly imbalanced at start
+            initialRecoveryWeight: 45,
+            
+            // Balance mechanics
+            tapLoadIncrease: 8,          // Load added per stressor tap
+            holdLoadIncrease: 0.4,       // Load added per frame when holding stressor
+            tapRecoveryIncrease: 10,     // Recovery added per recovery tap
+            holdRecoveryIncrease: 0.5,   // Recovery added per frame when holding recovery
+            
+            // Decay rates (weights naturally return toward center)
+            loadDecay: 0.08,             // Load decreases slowly over time
+            recoveryDecay: 0.08,         // Recovery decreases slowly over time
+            
+            // Burnout calculation
+            imbalanceThreshold: 15,      // Difference before burnout changes
+            burnoutIncreaseRate: 0.05,   // How fast burnout rises when imbalanced toward load
+            burnoutDecreaseRate: 0.03,   // How fast burnout falls when balanced
+            recoveryBurnoutDecreaseRate: 0.08, // How fast burnout falls when imbalanced toward recovery
+            
+            // Visual thresholds
+            balancedThreshold: 50,       // Below this = balanced state
+            strainedThreshold: 75,       // Above this = strained state
+            overloadedThreshold: 90,     // Above this = overloaded state
+            
+            // Reflection
+            reflectionCooldown: 15000,   // MS between reflection messages
+        };
+
+        // ============================================
+        // GLOBAL STATE
+        // ============================================
+        let burnout = CONFIG.initialBurnout;
+        let loadWeight = CONFIG.initialLoadWeight;
+        let recoveryWeight = CONFIG.initialRecoveryWeight;
+        
+        let heldButtons = new Set();     // Track which buttons are being held
+        let lastReflectionTime = 0;      // Last time reflection was shown
+        let hasSeenIntro = false;
+        
+        // Animation state
+        let seesawAngle = 0;             // Current angle of seesaw (-1 to 1)
+        let targetSeesawAngle = 0;       // Target angle based on balance
+        let breathOffset = 0;            // For subtle breathing animation
+        
+        // Visual state
+        let currentState = 'balanced';   // balanced, strained, overloaded
+        
+        // ============================================
+        // P5.JS SETUP
+        // ============================================
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            pixelDensity(2);
+            
+            // Setup button event listeners
+            setupButton('btnWork', 'work');
+            setupButton('btnObligations', 'obligations');
+            setupButton('btnSocial', 'social');
+            setupButton('btnMaintenance', 'maintenance');
+            setupButton('btnBreathing', 'breathing');
+            setupButton('btnMovement', 'movement');
+            setupButton('btnSupport', 'support');
+            
+            document.getElementById('btnReset').addEventListener('click', resetSystem);
+            document.getElementById('startBtn').addEventListener('click', dismissIntro);
+            document.getElementById('acknowledgeBtn').addEventListener('click', dismissReflection);
+        }
+
+        function draw() {
+            // Only draw if intro is dismissed
+            if (!hasSeenIntro) {
+                background(26, 29, 40);
+                return;
+            }
+            
+            // Update system state
+            updateWeights();
+            updateBalance();
+            updateBurnout();
+            updateVisualState();
+            
+            // Draw
+            drawBackground();
+            drawSeesaw();
+            
+            // Update UI
+            updateUI();
+            
+            // Check for reflection trigger
+            checkReflectionTrigger();
+        }
+
+        // ============================================
+        // BUTTON SETUP
+        // ============================================
+        function setupButton(id, type) {
+            const btn = document.getElementById(id);
+            
+            // Touch events
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                handleButtonPress(type, btn);
+            });
+            
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                handleButtonRelease(type, btn);
+            });
+            
+            // Mouse events (for desktop testing)
+            btn.addEventListener('mousedown', () => handleButtonPress(type, btn));
+            btn.addEventListener('mouseup', () => handleButtonRelease(type, btn));
+            btn.addEventListener('mouseleave', () => handleButtonRelease(type, btn));
+        }
+
+        function handleButtonPress(type, btn) {
+            heldButtons.add(type);
+            btn.classList.add('held');
+            
+            // Immediate tap effect
+            if (isStressor(type)) {
+                loadWeight += CONFIG.tapLoadIncrease;
+            } else {
+                recoveryWeight += CONFIG.tapRecoveryIncrease;
+            }
+        }
+
+        function handleButtonRelease(type, btn) {
+            heldButtons.delete(type);
+            btn.classList.remove('held');
+        }
+
+        function isStressor(type) {
+            return ['work', 'obligations', 'social', 'maintenance'].includes(type);
+        }
+
+        // ============================================
+        // SYSTEM UPDATES
+        // ============================================
+        function updateWeights() {
+            // Apply held button effects
+            for (let type of heldButtons) {
+                if (isStressor(type)) {
+                    loadWeight += CONFIG.holdLoadIncrease;
+                } else {
+                    recoveryWeight += CONFIG.holdRecoveryIncrease;
+                }
+            }
+            
+            // Natural decay toward equilibrium (50)
+            if (loadWeight > 50) {
+                loadWeight -= CONFIG.loadDecay;
+            } else if (loadWeight < 50) {
+                loadWeight += CONFIG.loadDecay * 0.5; // Slower return from low load
+            }
+            
+            if (recoveryWeight > 50) {
+                recoveryWeight -= CONFIG.recoveryDecay;
+            } else if (recoveryWeight < 50) {
+                recoveryWeight += CONFIG.recoveryDecay * 0.5;
+            }
+            
+            // Clamp weights
+            loadWeight = constrain(loadWeight, 0, 100);
+            recoveryWeight = constrain(recoveryWeight, 0, 100);
+        }
+
+        function updateBalance() {
+            // Calculate balance (-1 = all recovery, 1 = all load)
+            let imbalance = loadWeight - recoveryWeight;
+            targetSeesawAngle = map(imbalance, -100, 100, -1, 1);
+            
+            // Smooth angle transition
+            seesawAngle = lerp(seesawAngle, targetSeesawAngle, 0.05);
+        }
+
+        function updateBurnout() {
+            // Calculate imbalance (positive = load-heavy, negative = recovery-heavy)
+            let imbalance = loadWeight - recoveryWeight;
+            let absImbalance = abs(imbalance);
+            
+            if (absImbalance > CONFIG.imbalanceThreshold) {
+                // System is imbalanced
+                if (imbalance > 0) {
+                    // Load-heavy: INCREASE burnout
+                    let intensity = map(absImbalance, CONFIG.imbalanceThreshold, 100, 1, 3);
+                    burnout += CONFIG.burnoutIncreaseRate * intensity;
+                } else {
+                    // Recovery-heavy: DECREASE burnout faster
+                    let intensity = map(absImbalance, CONFIG.imbalanceThreshold, 100, 1, 2.5);
+                    burnout -= CONFIG.recoveryBurnoutDecreaseRate * intensity;
+                }
+            } else {
+                // System is balanced: slow decrease in burnout
+                burnout -= CONFIG.burnoutDecreaseRate;
+            }
+            
+            // Clamp burnout
+            burnout = constrain(burnout, 0, 100);
+        }
+
+        function updateVisualState() {
+            if (burnout >= CONFIG.overloadedThreshold) {
+                currentState = 'overloaded';
+            } else if (burnout >= CONFIG.strainedThreshold) {
+                currentState = 'strained';
+            } else {
+                currentState = 'balanced';
+            }
+        }
+
+        // ============================================
+        // DRAWING
+        // ============================================
+        function drawBackground() {
+            // Dynamic gradient based on burnout
+            let c1, c2;
+            
+            if (currentState === 'balanced') {
+                c1 = color(26, 29, 40);
+                c2 = color(40, 55, 80);
+            } else if (currentState === 'strained') {
+                c1 = color(35, 30, 40);
+                c2 = color(70, 50, 60);
+            } else {
+                c1 = color(40, 25, 30);
+                c2 = color(80, 40, 45);
+            }
+            
+            for (let y = 0; y < height; y++) {
+                let inter = map(y, 0, height, 0, 1);
+                let c = lerpColor(c1, c2, inter);
+                stroke(c);
+                line(0, y, width, y);
+            }
+        }
+
+        function drawSeesaw() {
+            push();
+            
+            // Calculate vertical center - position seesaw in the middle of the available space
+            // Header height ~80px, burnout display ~90px, controls ~280px = ~450px UI
+            // So we want to center in the remaining space
+            let uiHeight = 450; // Approximate total UI height
+            let availableHeight = height - uiHeight;
+            let centerY = 120 + (availableHeight / 2); // Start after header + half available space
+            
+            // Make sure it doesn't go too high or low
+            centerY = constrain(centerY, height * 0.25, height * 0.45);
+            
+            let centerX = width / 2;
+            
+            translate(centerX, centerY);
+            
+            // Breathing animation
+            breathOffset += 0.015;
+            let breathScale = 1 + sin(breathOffset) * 0.01;
+            scale(breathScale);
+            
+            // Add subtle wobble when strained
+            if (currentState === 'strained') {
+                translate(
+                    sin(frameCount * 0.05) * 2,
+                    cos(frameCount * 0.05) * 2
+                );
+            } else if (currentState === 'overloaded') {
+                translate(
+                    sin(frameCount * 0.1) * 4,
+                    cos(frameCount * 0.08) * 4
+                );
+            }
+            
+            // Seesaw dimensions - make it larger and more visible
+            let seesawLength = min(width * 0.75, 500); // Responsive but capped
+            let seesawThickness = 14;
+            
+            // Rotate based on balance
+            rotate(seesawAngle * 0.35); // Max 0.3 radians (~17 degrees)
+            
+            // Draw fulcrum (center point) - make it larger
+            fill(255, 255, 255, 100);
+            noStroke();
+            triangle(-20, 0, 20, 0, 0, 28);
+            
+            // Draw seesaw bar - thicker and more prominent
+            let barColor;
+            if (currentState === 'balanced') {
+                barColor = color(120, 200, 255);
+            } else if (currentState === 'strained') {
+                barColor = color(255, 180, 100);
+            } else {
+                barColor = color(255, 120, 120);
+            }
+            
+            // Add subtle glow effect
+            drawingContext.shadowBlur = 20;
+            drawingContext.shadowColor = `rgba(${red(barColor)}, ${green(barColor)}, ${blue(barColor)}, 0.6)`;
+            
+            fill(barColor);
+            noStroke();
+            rectMode(CENTER);
+            rect(0, -12, seesawLength, seesawThickness, 7);
+            
+            // Reset shadow
+            drawingContext.shadowBlur = 0;
+            
+            // Draw weights on each side - make them larger
+            let leftX = -seesawLength / 2 + 50;
+            let rightX = seesawLength / 2 - 50;
+            let weightY = -12;
+            
+            // Recovery side (left) - larger circles
+            fill(120, 200, 255, 200);
+            stroke(255, 255, 255, 100);
+            strokeWeight(2);
+            let recoverySize = map(recoveryWeight, 0, 100, 30, 80);
+            circle(leftX, weightY, recoverySize);
+            
+            // Load side (right)
+            fill(255, 120, 120, 200);
+            stroke(255, 255, 255, 100);
+            strokeWeight(2);
+            let loadSize = map(loadWeight, 0, 100, 30, 80);
+            circle(rightX, weightY, loadSize);
+            
+            // Labels - larger and clearer
+            noStroke();
+            fill(255, 255, 255, 220);
+            textAlign(CENTER, CENTER);
+            textSize(15);
+            textStyle(BOLD);
+            text('Recovery', leftX, weightY + recoverySize/2 + 24);
+            text('Load', rightX, weightY + loadSize/2 + 24);
+            
+            pop();
+        }
+
+        // ============================================
+        // UI UPDATES
+        // ============================================
+        function updateUI() {
+            document.getElementById('burnoutValue').textContent = Math.round(burnout) + '%';
+            
+            let stateText;
+            if (currentState === 'balanced') {
+                stateText = '✓ Balanced';
+            } else if (currentState === 'strained') {
+                stateText = '⚠️ Strained';
+            } else {
+                stateText = '🔥 Overloaded';
+            }
+            document.getElementById('burnoutState').textContent = stateText;
+        }
+
+        // ============================================
+        // REFLECTION SYSTEM
+        // ============================================
+        function checkReflectionTrigger() {
+            if (burnout >= CONFIG.overloadedThreshold) {
+                let now = millis();
+                if (now - lastReflectionTime > CONFIG.reflectionCooldown) {
+                    showReflection();
+                    lastReflectionTime = now;
+                }
+            }
+        }
+
+        function showReflection() {
+            document.getElementById('reflectionOverlay').classList.add('active');
+            
+            // Vary the message
+            let messages = [
+                "Your system is deeply out of balance. Real recovery takes time and intentional action.<br><br>Consider: what would restore balance in your actual life?",
+                "Prolonged imbalance leads to burnout. Short-term fixes won't resolve deep systemic strain.<br><br>What needs to change?",
+                "You're running on empty. Recovery isn't optional—it's essential.<br><br>What one thing could you release?"
+            ];
+            
+            let randomMessage = messages[Math.floor(Math.random() * messages.length)];
+            document.getElementById('reflectionText').innerHTML = randomMessage;
+        }
+
+        function dismissReflection() {
+            document.getElementById('reflectionOverlay').classList.remove('active');
+        }
+
+        // ============================================
+        // CONTROLS
+        // ============================================
+        function resetSystem() {
+            burnout = CONFIG.initialBurnout;
+            loadWeight = CONFIG.initialLoadWeight;
+            recoveryWeight = CONFIG.initialRecoveryWeight;
+            heldButtons.clear();
+            
+            // Remove held class from all buttons
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.classList.remove('held');
+            });
+        }
+
+        function dismissIntro() {
+            document.getElementById('introOverlay').classList.add('hidden');
+            hasSeenIntro = true;
+        }
+
+        // ============================================
+        // RESPONSIVE
+        // ============================================
+        function windowResized() {
+            resizeCanvas(windowWidth, windowHeight);
+        }
+    </script>
+</body>
+</html>
